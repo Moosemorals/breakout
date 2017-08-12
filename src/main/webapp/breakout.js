@@ -197,8 +197,10 @@ window.Breakout = (function () {
         };
 
         my.collide = function (other) {
-
-
+            return other.x + other.dx > my.x && 
+                    other.x + other.dx < my.x + my.width &&
+                    other.y + other.dy > my.y &&
+                    other.y + other.dy < my.y + my.height;
         };
 
         return my;
@@ -214,24 +216,42 @@ window.Breakout = (function () {
         }
     }
 
-
     function tick() {
-        var i;
-
-        ball.tick();
-        graphics.clearRect(0, 0, board.width, board.height);
-
+        var i, block, bounced = false;;               
+        
+        // Work out collisions
         for (i = 0; i < board.wall.length; i += 1) {
-            board.wall[i].draw(graphics);
+            block = board.wall[i];
+            if (block.collide(ball)) {
+                board.wall.splice(i, 1);
+                i -= 1;
+                bounced = true;
+                continue;
+            }                       
         }
-
-        ball.draw(graphics);
+        if (bounced) {
+            ball.dy = -ball.dy;
+        }
+        
+        
+        // Move the ball
+        ball.tick();
+        
+        // Draw eveything, in order.
+        // Clear the background first, then draw the bricks, the paddle, and the ball last (so it's on top of everything else)
+        
+        graphics.clearRect(0, 0, board.width, board.height);
+        for (i =0 ; i < board.wall.length; i += 1) {
+            board.wall[i].draw(graphics);
+        } 
         paddle.draw(graphics);
+        ball.draw(graphics);
+        
     }
 
 
     buildWall();
-//    setInterval(tick, 1000 / 25);
+    setInterval(tick, 1000 / 25);
 
 
 })();
