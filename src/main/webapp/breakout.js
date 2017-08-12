@@ -38,6 +38,25 @@ window.Breakout = (function () {
      Otherwise, content is assumend to be a DOM node, and my is appended to the element
      
      */
+
+    var board = {
+        width: 640,
+        height: 480,
+        wall: []
+    };
+
+
+    var constants = {
+        blockSpacing: 5,
+        blockWidth: 50,
+        blockHeight: 10,
+        blockRows: 6,
+        blockCols: Math.floor(board.width / (50 + 5))
+    };
+
+
+
+
     function buildElement(type, classes) {
         var el = document.createElement(type);
         var i, classList;
@@ -74,15 +93,9 @@ window.Breakout = (function () {
         return document.querySelector(selector);
     }
 
-    var board = {
-        width: 640,
-        height: 480
-    };
-
     var graphics = getElement("#board").getContext('2d');
 
     var shape = function (spec, my) {
-        
         my = my || {};
 
         my.x = spec.x || 0;
@@ -94,12 +107,11 @@ window.Breakout = (function () {
     };
 
     var ball = (function (my) {
-
         var size = 10;
 
         my = shape({
             x: size * 2,
-            y: size * 2,
+            y: (constants.blockHeight + constants.blockSpacing) * constants.blockRows + size * 2,
             dx: 5,
             dy: 5
         }, my);
@@ -112,7 +124,7 @@ window.Breakout = (function () {
             if (my.y + my.dy < size || (my.y + my.dy > (paddle.y - size) && (my.x > (paddle.x - paddle.width / 2) && my.x < (paddle.x + paddle.width / 2)))) {
                 my.dy = -my.dy;
             }
-            
+
             my.x += my.dx;
             my.y += my.dy;
         };
@@ -137,7 +149,7 @@ window.Breakout = (function () {
             dx: 8
         }, my);
 
-        my.draw = function (g) {            
+        my.draw = function (g) {
             g.beginPath();
             g.moveTo(my.x, my.y);
             g.lineTo(my.x + my.width / 2, my.y);
@@ -168,13 +180,58 @@ window.Breakout = (function () {
 
     })({});
 
+    var block = function (spec, my) {
+        my = shape(spec, my);
+
+        my.width = spec.width || constants.blockWidth;
+        my.height = spec.height || constants.blockHeight;
+
+        my.draw = function (g) {
+            g.beginPath();
+            g.moveTo(my.x, my.y);
+            g.lineTo(my.x + my.width, my.y);
+            g.lineTo(my.x + my.width, my.y + my.height);
+            g.lineTo(my.x, my.y + my.height);
+            g.closePath();
+            g.fill();
+        };
+
+        my.collide = function (other) {
+
+
+        };
+
+        return my;
+    };
+
+    function buildWall() {
+        var row, col;
+
+        for (row = 0; row < constants.blockRows; row += 1) {
+            for (col = 0; col < constants.blockCols; col += 1) {
+                board.wall.push(block({x: col * (constants.blockWidth + constants.blockSpacing), y: row * (constants.blockHeight + constants.blockSpacing)}));
+            }
+        }
+    }
+
+
     function tick() {
+        var i;
+
         ball.tick();
         graphics.clearRect(0, 0, board.width, board.height);
+
+        for (i = 0; i < board.wall.length; i += 1) {
+            board.wall[i].draw(graphics);
+        }
 
         ball.draw(graphics);
         paddle.draw(graphics);
     }
 
-    setInterval(tick, 1000 / 25);
+
+    buildWall();
+//    setInterval(tick, 1000 / 25);
+
+
 })();
