@@ -4,22 +4,39 @@
         <title>Simple breakout clone</title>
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
         <style type="text/css">
-            #holder {
-                position: relative;
-                width: 640px;
-                height: 480px;
-            }
 
+            * {
+                box-sizing: border-box;
+            }
+            #board {
+                border: thick solid darkorchid;
+                padding: 4px;
+                margin: 8px auto;
+            }
+            #banner {
+                width: 480px;
+                display: flex;
+                justify-content: space-between;
+            }
         </style>
     </head>
     <body>
-        <div id="holder">
+        <section id="game">
+            <div id="banner">
+                <div>Score: <span id="score">0</span></div>
+                <div>Lives: <span id="lives">1</span></div>
+            </div>
             <canvas id="board" width="640" height="480"></canvas>
-        </div>
-        <div id="instructions">
-            Nothing works yet
+            <div id="controls">
+                <button id="start">Start</button>                
+            </div>
+            <div id="instructions">
+                <p>Use the left and right arrows to move the paddle.</p>
+                <p>Try not to let the ball fall out of the bottom.</p>
 
-        </div>
-        <script src="breakout.js" defer></script>
+            </div>
+            <script src="breakout.js" defer></script>
+        </section>
+
     </body>
 </html>

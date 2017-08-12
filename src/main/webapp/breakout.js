@@ -45,8 +45,8 @@ window.Breakout = (function () {
         wall: []
     };
 
-
     var constants = {
+        framerate: 1000 / 25,
         blockSpacing: 5,
         blockWidth: 50,
         blockHeight: 10,
@@ -54,46 +54,19 @@ window.Breakout = (function () {
         blockCols: Math.floor(board.width / (50 + 5))
     };
 
-
-
-
-    function buildElement(type, classes) {
-        var el = document.createElement(type);
-        var i, classList;
-        if (classes) {
-            classList = classes.split(/\s+/);
-            for (i = 0; i < classList.length; i += 1) {
-                if (classList[i] !== undefined && classList[i].length > 0) {
-                    el.classList.add(classList[i]);
-                }
-            }
+    function clearElement(el) {
+        while (el.firstChild) {
+            el.removeChild(el.firstChild);
         }
+    }
 
-        for (index = 2; index < arguments.length; index += 1) {
-            switch (typeof arguments[index]) {
-                case "undefined":
-                    // do nothing
-                    break;
-                case "string":
-                case "number":
-                    el.appendChild(document.createTextNode(arguments[index]));
-                    break;
-                case "function":
-                    el.appendChild(arguments[index]());
-                    break;
-                default:
-                    el.appendChild(arguments[index]);
-                    break;
-            }
-        }
-        return el;
+    function textNode(text) {
+        return document.createTextNode(text);
     }
 
     function getElement(selector) {
         return document.querySelector(selector);
     }
-
-    var graphics = getElement("#board").getContext('2d');
 
     var shape = function (spec, my) {
         my = my || {};
@@ -119,6 +92,11 @@ window.Breakout = (function () {
         my.tick = function () {
             if (my.x + my.dx > (board.width - size) || my.x + my.dx < size) {
                 my.dx = -my.dx;
+            }
+
+            if (my.y + my.dy > paddle.y) {
+                game.end();
+                return;
             }
 
             if (my.y + my.dy < size || (my.y + my.dy > (paddle.y - size) && (my.x > (paddle.x - paddle.width / 2) && my.x < (paddle.x + paddle.width / 2)))) {
@@ -197,7 +175,7 @@ window.Breakout = (function () {
         };
 
         my.collide = function (other) {
-            return other.x + other.dx > my.x && 
+            return other.x + other.dx > my.x &&
                     other.x + other.dx < my.x + my.width &&
                     other.y + other.dy > my.y &&
                     other.y + other.dy < my.y + my.height;
@@ -206,52 +184,131 @@ window.Breakout = (function () {
         return my;
     };
 
-    function buildWall() {
-        var row, col;
+    var game = (function () {
+        var score = 0;
+        var lives = 1;
+        var graphics = getElement("#board").getContext('2d');
+        var scoreboard = getElement("#score");
+        var liveboard = getElement("#lives");
+        var running = false;
+        var timeout;
 
-        for (row = 0; row < constants.blockRows; row += 1) {
-            for (col = 0; col < constants.blockCols; col += 1) {
-                board.wall.push(block({x: col * (constants.blockWidth + constants.blockSpacing), y: row * (constants.blockHeight + constants.blockSpacing)}));
+        function _buildWall() {
+            var row, col;
+
+            var colOffset = (board.width % constants.blockWidth) / 2;
+
+            for (row = 0; row < constants.blockRows; row += 1) {
+                for (col = 0; col < constants.blockCols; col += 1) {
+                    board.wall.push(block({
+                        x: col * (constants.blockWidth + constants.blockSpacing) + colOffset,
+                        y: row * (constants.blockHeight + constants.blockSpacing)
+                    }));
+                }
             }
         }
-    }
 
-    function tick() {
-        var i, block, bounced = false;;               
-        
-        // Work out collisions
-        for (i = 0; i < board.wall.length; i += 1) {
-            block = board.wall[i];
-            if (block.collide(ball)) {
-                board.wall.splice(i, 1);
-                i -= 1;
-                bounced = true;
-                continue;
-            }                       
+        function _drawBackground(g) {
+            g.clearRect(0, 0, board.width, board.height);
         }
-        if (bounced) {
-            ball.dy = -ball.dy;
+
+        function _drawBlocks(g) {
+            var i;
+            for (i = 0; i < board.wall.length; i += 1) {
+                board.wall[i].draw(g);
+            }
         }
-        
-        
-        // Move the ball
-        ball.tick();
-        
-        // Draw eveything, in order.
-        // Clear the background first, then draw the bricks, the paddle, and the ball last (so it's on top of everything else)
-        
-        graphics.clearRect(0, 0, board.width, board.height);
-        for (i =0 ; i < board.wall.length; i += 1) {
-            board.wall[i].draw(graphics);
-        } 
-        paddle.draw(graphics);
-        ball.draw(graphics);
-        
-    }
+
+        function _tick() {
+            var i, block, bounced = false;
+
+            var g = _getGraphics();
+
+            // Work out collisions
+            for (i = 0; i < board.wall.length; i += 1) {
+                block = board.wall[i];
+                if (block.collide(ball)) {
+                    board.wall.splice(i, 1);
+                    i -= 1;
+                    bounced = true;
+                    _addScore(1);
+                    continue;
+                }
+            }
+            if (bounced) {
+                ball.dy = -ball.dy;
+            }
+
+            // Move the ball
+            ball.tick();
+
+            // Draw eveything, in order.
+            // Clear the background first, then draw the bricks, the paddle, and the ball last (so it's on top of everything else)
+
+            _drawBackground(g);
+            _drawBlocks(g);
+            paddle.draw(g);
+            ball.draw(g);
+
+            if (running) {
+                setTimeout(_tick, constants.framerate);
+            }
+        }
+
+        function _start() {
+            score = 0;
+            running = true;
+            timeout = setTimeout(_tick, constants.framerate);
+        }
+
+        function _end() {
+            var g = _getGraphics();
+            clearTimeout(timeout);
+            running = false;
+            lives -= 1;
+            _showLives();
+            _drawBackground(g);
+            _drawBlocks(g);
+            paddle.draw(g);
+        }
+
+        function _getGraphics() {
+            return graphics;
+        }
+
+        function _showScore() {
+            clearElement(scoreboard);
+            scoreboard.appendChild(textNode(score));
+        }
+
+        function _showLives() {
+            clearElement(liveboard);
+            liveboard.appendChild(textNode(lives));
+        }
+
+        function _addScore(points) {
+            score += points;
+            _showScore();
+        }
+
+        function _init() {
+            var g = _getGraphics();
+            _buildWall();
+            _drawBackground(g);
+            _drawBlocks(g);
+
+            getElement("#start").addEventListener("click", _start, false);
+        }
+
+        return {
+            start: _start,
+            end: _end,                        
+            init: _init
+        };
+
+    })();
 
 
-    buildWall();
-    setInterval(tick, 1000 / 25);
 
-
+    game.init();
 })();
