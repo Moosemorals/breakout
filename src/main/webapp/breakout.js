@@ -34,8 +34,8 @@ window.Breakout = (function () {
      classes should be a space seperated list of CSS classes to add to the element
      
      If content is a String, it is converted to a text node before being appended to the element.
-     If content is a function, the return value of the funciton is assumeed to be a DOM node, and that is appended to the element.
-     Otherwise, content is assumend to be a DOM node, and that is appended to the element
+     If content is a function, the return value of the funciton is assumeed to be a DOM node, and my is appended to the element.
+     Otherwise, content is assumend to be a DOM node, and my is appended to the element
      
      */
     function buildElement(type, classes) {
@@ -81,111 +81,100 @@ window.Breakout = (function () {
 
     var graphics = getElement("#board").getContext('2d');
 
+    var shape = function (spec, my) {
+        
+        my = my || {};
 
-    var ball = (function () {
+        my.x = spec.x || 0;
+        my.y = spec.y || 0;
+        my.dx = spec.dx || 0;
+        my.dy = spec.dy || 0;
+
+        return my;
+    };
+
+    var ball = (function (my) {
 
         var size = 10;
-        var x = size * 2, y = size * 2, dx = 5, dy = 5;
-        
-        var lastTick = performance.now();
 
-        function _tick() {
-            var thisTick = performance.now();
-            var p = paddle.getData();
-            var diff = thisTick - lastTick;
+        my = shape({
+            x: size * 2,
+            y: size * 2,
+            dx: 5,
+            dy: 5
+        }, my);
 
-            if (x + dx >( board.width - size) || x + dx < size) {
-                dx = -dx;
+        my.tick = function () {
+            if (my.x + my.dx > (board.width - size) || my.x + my.dx < size) {
+                my.dx = -my.dx;
             }
 
-            if (y + dy < size || (y + dy > (p.y - size) && (x > (p.x - p.width / 2) && (x < (p.x + p.width / 2))))) {
-                dy = -dy;
+            if (my.y + my.dy < size || (my.y + my.dy > (paddle.y - size) && (my.x > (paddle.x - paddle.width / 2) && my.x < (paddle.x + paddle.width / 2)))) {
+                my.dy = -my.dy;
             }
-/*            
-            if (y + dy > (board.height - size) || y + dy < size) {
-                dy = -dy;
-            }
-*/
-            x += dx;
-            y += dy;
-
-            lastTick = thisTick;
-        }
-        
-        function _setDx(newDx) {
-            dx = newDx;
-        }
-        
-        function _setDy(newDy) {
-            dy = newDy;
-        }
-        
-        function _draw(g) {
-            g.beginPath();
-            g.arc(x, y, size, 0, Math.PI*2, true); 
-            g.closePath();
-            g.fill();
-        }
-
-        return {
-            tick: _tick,
-            setDX: _setDx,
-            setDY: _setDy,
-            draw: _draw
+            
+            my.x += my.dx;
+            my.y += my.dy;
         };
 
-    })();
-    
-    var paddle = (function () {
-        var height = 8;
-        var x = board.width / 2, dx = 8, width = 40, y = board.height - (height * 1.5);
-        
-        function _draw(g) {
+        my.draw = function _draw(g) {
             g.beginPath();
-            g.moveTo(x, y);
-            g.lineTo(x + width / 2, y);
-            g.lineTo(x + width / 2, y + height);
-            g.lineTo(x - width / 2, y + height);
-            g.lineTo(x - width / 2, y);
+            g.arc(my.x, my.y, size, 0, Math.PI * 2, true);
             g.closePath();
             g.fill();
-        }
-        
+        };
+
+        return my;
+    })({});
+
+    var paddle = (function (my) {
+        my.height = 8;
+        my.width = 40;
+
+        my = shape({
+            x: board.width / 2,
+            y: board.height - (my.height * 1.5),
+            dx: 8
+        }, my);
+
+        my.draw = function (g) {            
+            g.beginPath();
+            g.moveTo(my.x, my.y);
+            g.lineTo(my.x + my.width / 2, my.y);
+            g.lineTo(my.x + my.width / 2, my.y + my.height);
+            g.lineTo(my.x - my.width / 2, my.y + my.height);
+            g.lineTo(my.x - my.width / 2, my.y);
+            g.closePath();
+            g.fill();
+        };
+
         function _keyHandler(e) {
             switch (e.key) {
                 case "ArrowLeft":
-                    if (x - dx > 0) {
-                        x -= dx;
+                    if (my.x - my.dx > 0) {
+                        my.x -= my.dx;
                     }
                     return;
                 case "ArrowRight":
-                    if (x + dx < board.width) {
-                        x += dx;
+                    if (my.x + my.dx < board.width) {
+                        my.x += my.dx;
                     }
             }
         }
-        
-        function _getData() {
-            return {x : x, y : y, width: width};
-        }
-        
-        
+
         document.addEventListener("keydown", _keyHandler, false);
-        
-        return {
-            draw: _draw,
-            getData: _getData
-        };
-        
-    })();
+
+        return my;
+
+    })({});
 
     function tick() {
         ball.tick();
         graphics.clearRect(0, 0, board.width, board.height);
-        
+
         ball.draw(graphics);
         paddle.draw(graphics);
     }
-    
-    setInterval(tick, 1000/25);
+
+    setInterval(tick, 1000 / 25);
 })();
