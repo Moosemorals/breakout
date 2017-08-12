@@ -85,8 +85,8 @@ window.Breakout = (function () {
         my = shape({
             x: size * 2,
             y: (constants.blockHeight + constants.blockSpacing) * constants.blockRows + size * 2,
-            dx: 5,
-            dy: 5
+            dx: 3,
+            dy: 3
         }, my);
 
         my.tick = function () {
@@ -119,12 +119,14 @@ window.Breakout = (function () {
 
     var paddle = (function (my) {
         my.height = 8;
-        my.width = 40;
+        my.width = 60;
+
+        var direction = 0;
 
         my = shape({
             x: board.width / 2,
             y: board.height - (my.height * 1.5),
-            dx: 8
+            dx: 0
         }, my);
 
         my.draw = function (g) {
@@ -137,34 +139,53 @@ window.Breakout = (function () {
             g.closePath();
             g.fill();
         };
+        
+        my.tick = function () {
+            if (my.x + my.dx > my.width / 2 && my.x + my.dx < (board.width - my.width / 2)) {
+                my.x += my.dx;
+            }
+        };
 
-        function _keyHandler(e) {
+        function _keyHandler(e) {           
+            
             switch (e.key) {
                 case "ArrowLeft":
-                    if (my.x - my.dx > 0) {
-                        my.x -= my.dx;
-                    }
-                    return;
+                    direction = -1;                    
+                    break;
                 case "ArrowRight":
-                    if (my.x + my.dx < board.width) {
-                        my.x += my.dx;
-                    }
+                    direction = 1;
+                    break;
+                default:
+                    direction = 0;
+                    break;
+            }
+            
+            switch (e.type) {
+                case "keydown":
+                    my.dx += (direction * 1);
+                    break;
+                case "keyup":
+                    my.dx = 0;
+                    break;
             }
         }
 
         document.addEventListener("keydown", _keyHandler, false);
-
+        document.addEventListener("keyup", _keyHandler, false);
+        
         return my;
 
     })({});
 
     var block = function (spec, my) {
         my = shape(spec, my);
-
+        my.color = spec.color || 'blue';
         my.width = spec.width || constants.blockWidth;
         my.height = spec.height || constants.blockHeight;
 
         my.draw = function (g) {
+            var fillStyle = g.fillStyle;
+            g.fillStyle = my.color;
             g.beginPath();
             g.moveTo(my.x, my.y);
             g.lineTo(my.x + my.width, my.y);
@@ -172,6 +193,7 @@ window.Breakout = (function () {
             g.lineTo(my.x, my.y + my.height);
             g.closePath();
             g.fill();
+            g.fillStyle = fillStyle;
         };
 
         my.collide = function (other) {
@@ -190,8 +212,7 @@ window.Breakout = (function () {
         var graphics = getElement("#board").getContext('2d');
         var scoreboard = getElement("#score");
         var liveboard = getElement("#lives");
-        var running = false;
-        var timeout;
+        var running = false;        
 
         function _buildWall() {
             var row, col;
@@ -201,6 +222,7 @@ window.Breakout = (function () {
             for (row = 0; row < constants.blockRows; row += 1) {
                 for (col = 0; col < constants.blockCols; col += 1) {
                     board.wall.push(block({
+                        color: "hsl(0, " + (80 - (row * 10)) +"%, 50%)",
                         x: col * (constants.blockWidth + constants.blockSpacing) + colOffset,
                         y: row * (constants.blockHeight + constants.blockSpacing)
                     }));
@@ -239,31 +261,29 @@ window.Breakout = (function () {
                 ball.dy = -ball.dy;
             }
 
-            // Move the ball
+            paddle.tick();
             ball.tick();
 
             // Draw eveything, in order.
             // Clear the background first, then draw the bricks, the paddle, and the ball last (so it's on top of everything else)
 
-            _drawBackground(g);
-            _drawBlocks(g);
-            paddle.draw(g);
-            ball.draw(g);
-
             if (running) {
-                setTimeout(_tick, constants.framerate);
+                _drawBackground(g);
+                _drawBlocks(g);
+                paddle.draw(g);
+                ball.draw(g);
+                requestAnimationFrame(_tick);
             }
         }
 
         function _start() {
             score = 0;
             running = true;
-            timeout = setTimeout(_tick, constants.framerate);
+            requestAnimationFrame(_tick);
         }
 
         function _end() {
-            var g = _getGraphics();
-            clearTimeout(timeout);
+            var g = _getGraphics();            
             running = false;
             lives -= 1;
             _showLives();
