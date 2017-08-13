@@ -79,15 +79,15 @@ window.Breakout = (function () {
         return my;
     };
 
-    var ball = (function (my) {
+    var ballGenerator = function (my) {
         var size = 10;
 
         my = shape({
-            x: size * 2,
-            y: (constants.blockHeight + constants.blockSpacing) * constants.blockRows + size * 2,
-            dx: 3,
-            dy: 3
-        }, my);
+                x: size * 2,
+                y: (constants.blockHeight + constants.blockSpacing) * constants.blockRows + size * 2,
+                dx: 3,
+                dy: 3
+            }, my);
 
         my.tick = function () {
             if (my.x + my.dx > (board.width - size) || my.x + my.dx < size) {
@@ -115,7 +115,7 @@ window.Breakout = (function () {
         };
 
         return my;
-    })({});
+    };
 
     var paddle = (function (my) {
         my.height = 8;
@@ -139,27 +139,29 @@ window.Breakout = (function () {
             g.closePath();
             g.fill();
         };
-        
+
         my.tick = function () {
             if (my.x + my.dx > my.width / 2 && my.x + my.dx < (board.width - my.width / 2)) {
                 my.x += my.dx;
             }
         };
 
-        function _keyHandler(e) {           
-            
+        function _keyHandler(e) {
+
             switch (e.key) {
                 case "ArrowLeft":
-                    direction = -1;                    
+                case "a":
+                    direction = -1;
                     break;
                 case "ArrowRight":
+                case "d":
                     direction = 1;
                     break;
                 default:
                     direction = 0;
                     break;
             }
-            
+
             switch (e.type) {
                 case "keydown":
                     my.dx += (direction * 1);
@@ -172,7 +174,7 @@ window.Breakout = (function () {
 
         document.addEventListener("keydown", _keyHandler, false);
         document.addEventListener("keyup", _keyHandler, false);
-        
+
         return my;
 
     })({});
@@ -212,7 +214,9 @@ window.Breakout = (function () {
         var graphics = getElement("#board").getContext('2d');
         var scoreboard = getElement("#score");
         var liveboard = getElement("#lives");
-        var running = false;        
+        var running = false;
+
+        var ball;
 
         function _buildWall() {
             var row, col;
@@ -222,7 +226,7 @@ window.Breakout = (function () {
             for (row = 0; row < constants.blockRows; row += 1) {
                 for (col = 0; col < constants.blockCols; col += 1) {
                     board.wall.push(block({
-                        color: "hsl(0, " + (80 - (row * 10)) +"%, 50%)",
+                        color: "hsl(0, " + (80 - (row * 10)) + "%, 50%)",
                         x: col * (constants.blockWidth + constants.blockSpacing) + colOffset,
                         y: row * (constants.blockHeight + constants.blockSpacing)
                     }));
@@ -246,6 +250,10 @@ window.Breakout = (function () {
 
             var g = _getGraphics();
 
+            // Move paddle and ball
+            paddle.tick();
+            ball.tick();
+            
             // Work out collisions
             for (i = 0; i < board.wall.length; i += 1) {
                 block = board.wall[i];
@@ -261,9 +269,7 @@ window.Breakout = (function () {
                 ball.dy = -ball.dy;
             }
 
-            paddle.tick();
-            ball.tick();
-
+            
             // Draw eveything, in order.
             // Clear the background first, then draw the bricks, the paddle, and the ball last (so it's on top of everything else)
 
@@ -279,11 +285,14 @@ window.Breakout = (function () {
         function _start() {
             score = 0;
             running = true;
+
+            ball = ballGenerator();
+
             requestAnimationFrame(_tick);
         }
 
         function _end() {
-            var g = _getGraphics();            
+            var g = _getGraphics();
             running = false;
             lives -= 1;
             _showLives();
@@ -322,7 +331,7 @@ window.Breakout = (function () {
 
         return {
             start: _start,
-            end: _end,                        
+            end: _end,
             init: _init
         };
 
